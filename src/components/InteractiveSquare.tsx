@@ -1,37 +1,84 @@
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
-export const InteractiveSquare = () => {
+type InteractionVariant = 'default' | 'glow' | 'pulse'
+
+interface InteractiveSquareProps {
+  variant?: InteractionVariant
+}
+
+const variantConfig = {
+  default: {
+    base: 'bg-square-default',
+    hover: 'hover:bg-square-hover hover:shadow-square-hover hover:scale-105',
+    active: 'bg-square-active scale-[0.95]',
+    text: 'Clique-me!',
+    toastMessage: 'Clicado!',
+    toastBg: 'bg-toast-background',
+  },
+  glow: {
+    base: 'bg-square-glow-default',
+    hover: 'hover:bg-square-glow-hover hover:shadow-square-glow-hover',
+    active: 'bg-square-glow-active',
+    text: 'Gire-me!',
+    toastMessage: 'Girou!',
+    toastBg: 'bg-square-glow-hover',
+  },
+  pulse: {
+    base: 'bg-square-pulse-default',
+    hover: 'hover:bg-square-pulse-hover hover:animate-pulse-subtle',
+    active: 'bg-square-pulse-active scale-[0.95]',
+    text: 'Pulse-me!',
+    toastMessage: 'Pulsou!',
+    toastBg: 'bg-square-pulse-hover',
+  },
+}
+
+export const InteractiveSquare = ({
+  variant = 'default',
+}: InteractiveSquareProps) => {
   const [isPressed, setIsPressed] = useState(false)
   const [showToast, setShowToast] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false)
+
+  const config = variantConfig[variant]
 
   useEffect(() => {
-    let timer: NodeJS.Timeout
+    let toastTimer: NodeJS.Timeout
     if (showToast) {
-      timer = setTimeout(() => {
+      toastTimer = setTimeout(() => {
         setShowToast(false)
-      }, 1700) // 1500ms visible + 200ms fade-out
+      }, 1700)
     }
-    return () => clearTimeout(timer)
+    return () => clearTimeout(toastTimer)
   }, [showToast])
 
   const handleClick = () => {
-    if (!showToast) {
-      setShowToast(true)
+    if (showToast) return
+
+    setShowToast(true)
+
+    if (variant === 'glow') {
+      setIsAnimating(true)
+      setTimeout(() => setIsAnimating(false), 500)
     }
   }
+
+  const handleMouseDown = () => setIsPressed(true)
+  const handleMouseUp = () => setIsPressed(false)
+  const handleMouseLeave = () => setIsPressed(false)
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
-      setIsPressed(true)
+      handleMouseDown()
       handleClick()
     }
   }
 
   const handleKeyUp = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Enter' || event.key === ' ') {
-      setIsPressed(false)
+      handleMouseUp()
     }
   }
 
@@ -39,10 +86,15 @@ export const InteractiveSquare = () => {
     <div className="relative flex items-center justify-center">
       {showToast && (
         <div
-          className="absolute bottom-full mb-4 animate-toast-in rounded-toast bg-toast-background px-5 py-3 text-toast-text shadow-toast"
+          className={cn(
+            'absolute bottom-full mb-4 animate-toast-in rounded-toast px-5 py-3 text-toast-text shadow-toast',
+            config.toastBg,
+          )}
           style={{ animationFillMode: 'forwards' }}
         >
-          <p className="text-sm font-medium md:text-base">Clicado!</p>
+          <p className="text-sm font-medium md:text-base">
+            {config.toastMessage}
+          </p>
         </div>
       )}
       <div
@@ -54,23 +106,25 @@ export const InteractiveSquare = () => {
           'h-[150px] w-[150px] rounded-square-mobile text-2xl',
           'md:h-[200px] md:w-[200px]',
           'lg:h-[250px] lg:w-[250px] lg:rounded-square-desktop lg:text-3xl',
-          'bg-square-default text-text-secondary shadow-square-default',
+          'text-text-secondary shadow-square-default',
           'font-semibold transition-all duration-200 ease-out',
-          'hover:scale-105 hover:bg-square-hover hover:shadow-square-hover',
           'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
+          config.base,
+          config.hover,
           {
-            'scale-[0.95] bg-square-active': isPressed,
-            'scale-105': !isPressed,
+            [config.active]: isPressed && variant !== 'glow',
+            'animate-spin-once': isAnimating && variant === 'glow',
+            'scale-[0.95]': isPressed && variant === 'glow',
           },
         )}
-        onMouseDown={() => setIsPressed(true)}
-        onMouseUp={() => setIsPressed(false)}
-        onMouseLeave={() => setIsPressed(false)}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
       >
-        Clique-me!
+        {config.text}
       </div>
     </div>
   )
